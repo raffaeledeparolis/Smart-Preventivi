@@ -1,0 +1,6 @@
+{
+  "name": "Preventivi Smart",
+  "description": "Applicazione professionale per la redazione di preventivi, computo metrico estimativo, anagrafica clienti, catalogo prestazioni, materiali, prezziario personalizzato e stampa PDF per l'edilizia e l'artigianato.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
