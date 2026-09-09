@@ -83,6 +83,79 @@ export interface RigaComputo {
   
   quotaManodoperaPerc?: number; // % manodopera per detrazioni fiscali
   note?: string;
+
+  // Analisi Costi Diretti e Margine di Guadagno
+  costoMaterialiUnitario?: number; // Costo unitario sostenuto per materiali (€/UM)
+  costoManodoperaUnitario?: number; // Costo unitario sostenuto per manodopera/posa (€/UM)
+}
+
+export interface DettaglioCostiRiga {
+  rigaId: string;
+  capitoloId: string;
+  codiceVoce?: string;
+  descrizione: string;
+  unitaMisura: UnitaMisura;
+  quantita: number;
+  prezzoUnitario: number;
+  scontoPerc: number;
+  ricavoNettoUnitario: number;
+  ricavoTotale: number; // subtotale effettivo
+
+  costoMaterialiUnitario: number;
+  costoManodoperaUnitario: number;
+  costoUnitarioTotale: number;
+
+  costoMaterialiTotale: number;
+  costoManodoperaTotale: number;
+  costoTotale: number;
+
+  margineEuro: number; // ricavoTotale - costoTotale
+  marginePerc: number; // (margineEuro / ricavoTotale) * 100
+  ricaricoPerc: number; // (margineEuro / costoTotale) * 100
+  incidenzaMaterialiPerc: number; // % sul costo totale riga
+  incidenzaManodoperaPerc: number; // % sul costo totale riga
+  isStimaAutomatica: boolean;
+}
+
+export interface AnalisiCapitoloMargini {
+  capitoloId: string;
+  titolo: string;
+  ordine: number;
+  numeroVoci: number;
+  ricavoTotale: number;
+  costoMaterialiTotale: number;
+  costoManodoperaTotale: number;
+  costoTotale: number;
+  margineEuro: number;
+  marginePerc: number;
+  ricaricoPerc: number;
+}
+
+export interface AnalisiMarginiDocumento {
+  righeDettaglio: DettaglioCostiRiga[];
+  capitoliDettaglio: AnalisiCapitoloMargini[];
+
+  // Totali Economici di Commessa
+  ricavoLavoriLordo: number;
+  scontoGeneraleValore: number;
+  ricavoLavoriNetto: number;
+
+  totaleCostoMateriali: number;
+  totaleCostoManodopera: number;
+  totaleCosti: number;
+
+  margineComplessivoEuro: number;
+  margineComplessivoPerc: number; // Margine % sul ricavo netto
+  ricaricoComplessivoPerc: number; // Markup % sui costi diretti
+
+  incidenzaMaterialiSuCosti: number; // %
+  incidenzaManodoperaSuCosti: number; // %
+
+  // Conteggi per salute margini
+  vociInPerdita: number;
+  vociMargineBasso: number;
+  vociMargineBuono: number;
+  vociMargineOttimo: number;
 }
 
 export interface CapitoloDocumento {
@@ -179,6 +252,8 @@ export interface ModelloDocumentoPreset {
   categoria: string;
   descrizione: string;
   tipoPredefinito: TipoDocumento;
+  isCustom?: boolean;
+  dataCreazione?: string;
   capitoli: {
     titolo: string;
     righe: {
@@ -193,4 +268,18 @@ export interface ModelloDocumentoPreset {
       quotaManodoperaPerc?: number;
     }[];
   }[];
+  oneriSicurezzaTipo?: 'percentuale' | 'fisso';
+  oneriSicurezzaValore?: number;
+  cassaPrevidenzialeAttiva?: boolean;
+  cassaPrevidenzialeNome?: string;
+  cassaPrevidenzialeTipo?: 'percentuale' | 'fisso';
+  cassaPrevidenzialeValore?: number;
+  cassaPrevidenzialePerc?: number;
+  ivaPerc?: number;
+  ritenutaAccontoAttiva?: boolean;
+  ritenutaAccontoPerc?: number;
+  condizioniPagamento?: string;
+  tempiEsecuzione?: string;
+  esclusioni?: string;
+  noteFinali?: string;
 }

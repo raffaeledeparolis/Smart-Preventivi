@@ -13,7 +13,10 @@ import {
   Home,
   Sliders,
   Check,
-  RotateCcw
+  RotateCcw,
+  BookmarkCheck,
+  Bookmark,
+  Trash2
 } from 'lucide-react';
 import {
   Documento,
@@ -30,16 +33,25 @@ interface DocumentGeneratorSectionProps {
   clienti: Cliente[];
   existingDocsCount: number;
   onDocumentGenerated: (doc: Documento) => void;
+  customModelli?: ModelloDocumentoPreset[];
+  onDeleteCustomModello?: (id: string) => void;
 }
 
 export const DocumentGeneratorSection: React.FC<DocumentGeneratorSectionProps> = ({
   clienti,
   existingDocsCount,
-  onDocumentGenerated
+  onDocumentGenerated,
+  customModelli = [],
+  onDeleteCustomModello
 }) => {
   const [activeMode, setActiveMode] = useState<'preset' | 'parametrico' | 'ai'>('preset');
   const [selectedClienteId, setSelectedClienteId] = useState<string>(clienti[0]?.id || '');
-  const [selectedPresetId, setSelectedPresetId] = useState<string>(INITIAL_PRESET_MODELLI[0]?.id || '');
+
+  // Modelli combinati: custom prima, poi preset integrati
+  const tuttiIModelli = [...customModelli, ...INITIAL_PRESET_MODELLI];
+
+  const [selectedPresetId, setSelectedPresetId] = useState<string>(tuttiIModelli[0]?.id || '');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('TUTTI');
   const [docType, setDocType] = useState<TipoDocumento>('preventivo');
 
   // Parametric Generator State
@@ -139,21 +151,27 @@ export const DocumentGeneratorSection: React.FC<DocumentGeneratorSectionProps> =
       },
       capitoli: capitoli,
       righe: righe,
-      oneriSicurezzaTipo: 'percentuale',
-      oneriSicurezzaValore: 3.5,
-      cassaPrevidenzialeAttiva: false,
-      cassaPrevidenzialeNome: '',
-      cassaPrevidenzialeTipo: 'percentuale',
-      cassaPrevidenzialeValore: 0,
-      cassaPrevidenzialePerc: 0,
-      ivaPerc: 10,
-      ritenutaAccontoAttiva: false,
-      ritenutaAccontoPerc: 0,
+      oneriSicurezzaTipo: preset.oneriSicurezzaTipo || 'percentuale',
+      oneriSicurezzaValore: preset.oneriSicurezzaValore !== undefined ? preset.oneriSicurezzaValore : 3.5,
+      cassaPrevidenzialeAttiva: preset.cassaPrevidenzialeAttiva || false,
+      cassaPrevidenzialeNome: preset.cassaPrevidenzialeNome || '',
+      cassaPrevidenzialeTipo: preset.cassaPrevidenzialeTipo || 'percentuale',
+      cassaPrevidenzialeValore: preset.cassaPrevidenzialeValore !== undefined ? preset.cassaPrevidenzialeValore : (preset.cassaPrevidenzialePerc || 0),
+      cassaPrevidenzialePerc: preset.cassaPrevidenzialePerc !== undefined ? preset.cassaPrevidenzialePerc : 0,
+      ivaPerc: preset.ivaPerc !== undefined ? preset.ivaPerc : 10,
+      ritenutaAccontoAttiva: preset.ritenutaAccontoAttiva || false,
+      ritenutaAccontoPerc: preset.ritenutaAccontoPerc || 0,
       scontoGeneralePerc: 0,
-      condizioniPagamento: '30% all\'accettazione del preventivo, 40% a stato avanzamento lavori (SAL), 30% a saldo.',
-      tempiEsecuzione: 'Inizio lavori entro 15 giorni lavorativi dalla conferma d\'ordine.',
-      esclusioni: 'Fornitura piastrelle e corpi illuminanti salvo diverso accordo scritto.',
-      noteFinali: 'Lavori assoggettati ad aliquota IVA agevolata 10% per interventi di recupero del patrimonio edilizio.',
+      condizioniPagamento:
+        preset.condizioniPagamento ||
+        '30% all\'accettazione del preventivo, 40% a stato avanzamento lavori (SAL), 30% a saldo.',
+      tempiEsecuzione:
+        preset.tempiEsecuzione || 'Inizio lavori entro 15 giorni lavorativi dalla conferma d\'ordine.',
+      esclusioni:
+        preset.esclusioni || 'Fornitura piastrelle e corpi illuminanti salvo diverso accordo scritto.',
+      noteFinali:
+        preset.noteFinali ||
+        'Lavori assoggettati ad aliquota IVA agevolata 10% per interventi di recupero del patrimonio edilizio.',
       dataAggiornamento: dataOggi
     };
 
@@ -846,62 +864,192 @@ export const DocumentGeneratorSection: React.FC<DocumentGeneratorSectionProps> =
       {/* MODE 1: PRESET ARCHETYPES */}
       {activeMode === 'preset' && (
         <div className="space-y-4">
-          <h2 className="text-base font-bold text-slate-900">
-            Seleziona un modello professionale pronto all'uso
-          </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">
+                Seleziona un modello professionale pronto all'uso
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Modelli preconfezionati con capitoli, misurazioni analitiche e stime economiche
+              </p>
+            </div>
+
+            {/* Category Filter Pills */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {[
+                'TUTTI',
+                ...(customModelli.length > 0 ? ['I MIEI MODELLI'] : []),
+                ...Array.from(
+                  new Set(
+                    tuttiIModelli
+                      .map((p) => p.categoria)
+                      .filter((cat) => cat !== 'I MIEI MODELLI')
+                  )
+                )
+              ].map((cat) => {
+                const active = selectedCategoryFilter === cat;
+                const isMyTemplatesPill = cat === 'I MIEI MODELLI';
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setSelectedCategoryFilter(cat)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      active
+                        ? isMyTemplatesPill
+                          ? 'bg-purple-700 text-white shadow-xs'
+                          : 'bg-amber-600 text-white shadow-xs'
+                        : isMyTemplatesPill
+                        ? 'bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-200'
+                        : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                    }`}
+                  >
+                    {isMyTemplatesPill && <BookmarkCheck className="w-3.5 h-3.5" />}
+                    <span>{cat === 'TUTTI' ? 'Tutti i Modelli' : cat}</span>
+                    {isMyTemplatesPill && (
+                      <span className="bg-purple-200 text-purple-900 px-1 rounded text-[10px]">
+                        {customModelli.length}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {INITIAL_PRESET_MODELLI.map((preset) => {
-              const vociTotali = preset.capitoli.reduce((acc, c) => acc + c.righe.length, 0);
-              const isSelected = selectedPresetId === preset.id;
+            {tuttiIModelli
+              .filter((p) => {
+                if (selectedCategoryFilter === 'TUTTI') return true;
+                if (selectedCategoryFilter === 'I MIEI MODELLI') {
+                  return p.isCustom || p.categoria === 'I MIEI MODELLI';
+                }
+                return p.categoria === selectedCategoryFilter;
+              })
+              .map((preset) => {
+                const vociTotali = preset.capitoli.reduce((acc, c) => acc + c.righe.length, 0);
+                const isSelected = selectedPresetId === preset.id;
+                const isGestioneProgetto = preset.categoria === 'GESTIONE DI PROGETTO';
+                const isCustomTemplate = Boolean(preset.isCustom);
 
-              return (
-                <div
-                  key={preset.id}
-                  className={`bg-white rounded-xl border p-5 shadow-xs transition-all flex flex-col justify-between ${
-                    isSelected ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-slate-200 hover:border-amber-300'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                        {preset.categoria}
-                      </span>
-                      <span className="text-xs text-slate-400 font-medium">
-                        {preset.capitoli.length} capitoli | {vociTotali} voci
-                      </span>
-                    </div>
+                return (
+                  <div
+                    key={preset.id}
+                    className={`bg-white rounded-xl border p-5 shadow-xs transition-all flex flex-col justify-between ${
+                      isSelected
+                        ? 'border-amber-500 ring-2 ring-amber-500/20'
+                        : isCustomTemplate
+                        ? 'border-purple-200 hover:border-purple-400 bg-gradient-to-b from-white to-purple-50/20'
+                        : 'border-slate-200 hover:border-amber-300'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {isCustomTemplate ? (
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-purple-800 bg-purple-100 px-2 py-0.5 rounded-md border border-purple-300 flex items-center gap-1">
+                              <BookmarkCheck className="w-3 h-3 text-purple-700" />
+                              Tuo Modello
+                            </span>
+                          ) : null}
 
-                    <h3 className="text-base font-bold text-slate-900">{preset.titolo}</h3>
-                    <p className="text-xs text-slate-600 mt-2 leading-relaxed">{preset.descrizione}</p>
-
-                    {/* Capitoli preview */}
-                    <div className="mt-3 pt-3 border-t border-slate-100 space-y-1">
-                      {preset.capitoli.map((cap, i) => (
-                        <div key={i} className="text-xs text-slate-500 flex items-center gap-1.5">
-                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span className="truncate">{cap.titolo}</span>
+                          <span
+                            className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+                              isGestioneProgetto
+                                ? 'text-indigo-800 bg-indigo-50 border-indigo-200'
+                                : isCustomTemplate
+                                ? 'text-slate-700 bg-slate-100 border-slate-200'
+                                : 'text-amber-800 bg-amber-50 border-amber-200'
+                            }`}
+                          >
+                            {preset.categoria}
+                          </span>
                         </div>
-                      ))}
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-400 font-medium">
+                            {preset.capitoli.length} capitoli | {vociTotali} voci
+                          </span>
+
+                          {isCustomTemplate && onDeleteCustomModello && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (
+                                  confirm(
+                                    `Sei sicuro di voler eliminare il modello personalizzato "${preset.titolo}"?`
+                                  )
+                                ) {
+                                  onDeleteCustomModello(preset.id);
+                                }
+                              }}
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                              title="Elimina modello personalizzato"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <h3 className="text-base font-bold text-slate-900">{preset.titolo}</h3>
+                      <p className="text-xs text-slate-600 mt-2 leading-relaxed">{preset.descrizione}</p>
+
+                      {/* Capitoli preview */}
+                      <div className="mt-3 pt-3 border-t border-slate-100 space-y-1">
+                        {preset.capitoli.map((cap, i) => (
+                          <div key={i} className="text-xs text-slate-500 flex items-center gap-1.5">
+                            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span className="truncate">{cap.titolo}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+                      <span className="text-xs text-slate-500 truncate">
+                        {isCustomTemplate && preset.dataCreazione
+                          ? `Salvato il ${preset.dataCreazione}`
+                          : 'Include formule metriche e scomposizione manodopera'}
+                      </span>
+
+                      <button
+                        onClick={() => handleGenerateFromPreset(preset)}
+                        className={`inline-flex items-center gap-2 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-xs transition-colors shrink-0 ${
+                          isCustomTemplate
+                            ? 'bg-purple-700 hover:bg-purple-800'
+                            : 'bg-amber-600 hover:bg-amber-700'
+                        }`}
+                      >
+                        <Zap className="w-3.5 h-3.5" />
+                        <span>Genera Documento</span>
+                      </button>
                     </div>
                   </div>
+                );
+              })}
 
-                  <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-xs text-slate-500">
-                      Include formule metriche e scomposizione manodopera
-                    </span>
-
-                    <button
-                      onClick={() => handleGenerateFromPreset(preset)}
-                      className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-xs transition-colors"
-                    >
-                      <Zap className="w-3.5 h-3.5" />
-                      <span>Genera Documento</span>
-                    </button>
-                  </div>
+            {/* Empty State se il filtro selezionato non ha modelli */}
+            {tuttiIModelli.filter((p) => {
+              if (selectedCategoryFilter === 'TUTTI') return true;
+              if (selectedCategoryFilter === 'I MIEI MODELLI') {
+                return p.isCustom || p.categoria === 'I MIEI MODELLI';
+              }
+              return p.categoria === selectedCategoryFilter;
+            }).length === 0 && (
+              <div className="col-span-full bg-white rounded-xl border border-dashed border-slate-300 p-8 text-center space-y-3">
+                <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mx-auto">
+                  <Bookmark className="w-6 h-6" />
                 </div>
-              );
-            })}
+                <h3 className="text-base font-bold text-slate-900">
+                  Nessun modello salvato in questa categoria
+                </h3>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  Puoi salvare qualsiasi preventivo o computo metrico come modello riutilizzabile aprendo il documento e cliccando su <strong>"Salva come Modello"</strong>.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

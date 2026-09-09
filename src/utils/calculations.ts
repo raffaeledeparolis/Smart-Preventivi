@@ -1,4 +1,10 @@
-import { Documento, RigaComputo } from '../types';
+import {
+  Documento,
+  RigaComputo,
+  DettaglioCostiRiga,
+  AnalisiCapitoloMargini,
+  AnalisiMarginiDocumento
+} from '../types';
 
 /**
  * Calcola la quantità risultante per una riga di computo metrico
@@ -171,4 +177,195 @@ export function generaNumeroDocumento(tipo: string, anno: number, conteggio: num
   const prefisso = tipo === 'computo_metrico' ? 'CME' : tipo === 'fattura_proforma' ? 'PROF' : 'PREV';
   const progressivo = String(conteggio + 1).padStart(3, '0');
   return `${prefisso}-${anno}-${progressivo}`;
+}
+
+/**
+ * Ricava i costi unitari di una riga:
+ * - Se definiti esplicitamente dall'utente, usa i valori inseriti.
+ * - Altrimenti fornisce una stima iniziale basata sulla quota manodopera e un margine indicativo di cantiere (~30%).
+ */
+export function getRigaCostiUnitari(riga: Partial<RigaComputo>): {
+  costoMaterialiUnitario: number;
+  costoManodoperaUnitario: number;
+  isStimaAutomatica: boolean;
+} {
+  const hasExplicitMat = riga.costoMaterialiUnitario !== undefined && riga.costoMaterialiUnitario !== null;
+  const hasExplicitMano = riga.costoManodoperaUnitario !== undefined && riga.costoManodoperaUnitario !== null;
+
+  if (hasExplicitMat || hasExplicitMano) {
+    return {
+      costoMaterialiUnitario: hasExplicitMat ? round2(Number(riga.costoMaterialiUnitario) || 0) : 0,
+      costoManodoperaUnitario: hasExplicitMano ? round2(Number(riga.costoManodoperaUnitario) || 0) : 0,
+      isStimaAutomatica: false
+    };
+  }
+
+  // Stima automatica basata sul prezzo di vendita e sulla quota manodopera
+  const pUnitario = Number(riga.prezzoUnitario) || 0;
+  if (pUnitario > 0) {
+    const costoStimatoTotale = pUnitario * 0.70; // 30% margine base tipico edile
+    const manoRatio = (riga.quotaManodoperaPerc !== undefined ? Number(riga.quotaManodoperaPerc) : 65) / 100;
+    const costoMano = round2(costoStimatoTotale * manoRatio);
+    const costoMat = round2(costoStimatoTotale * (1 - manoRatio));
+    return {
+      costoMaterialiUnitario: costoMat,
+      costoManodoperaUnitario: costoMano,
+      isStimaAutomatica: true
+    };
+  }
+
+  return {
+    costoMaterialiUnitario: 0,
+    costoManodoperaUnitario: 0,
+    isStimaAutomatica: false
+  };
+}
+
+/**
+ * Calcola l'analisi di costo, ricavo e margine per una singola riga
+ */
+export function calcolaAnalisiRiga(riga: RigaComputo): DettaglioCostiRiga {
+  const quantita = Number(riga.quantita) || 0;
+  const prezzoUnitario = Number(riga.prezzoUnitario) || 0;
+  const scontoPerc = Number(riga.scontoPerc) || 0;
+
+  const ricavoNettoUnitario = round2(prezzoUnitario * (1 - scontoPerc / 100));
+  const ricavoTotale = round2(Number(riga.subtotale) !== undefined && !isNaN(Number(riga.subtotale))
+    ? Number(riga.subtotale)
+    : quantita * ricavoNettoUnitario);
+
+  const costi = getRigaCostiUnitari(riga);
+  const costoMaterialiTotale = round2(quantita * costi.costoMaterialiUnitario);
+  const costoManodoperaTotale = round2(quantita * costi.costoManodoperaUnitario);
+  const costoTotale = round2(costoMaterialiTotale + costoManodoperaTotale);
+  const costoUnitarioTotale = round2(costi.costoMaterialiUnitario + costi.costoManodoperaUnitario);
+
+  const margineEuro = round2(ricavoTotale - costoTotale);
+  const marginePerc = ricavoTotale > 0 ? round2((margineEuro / ricavoTotale) * 100) : 0;
+  const ricaricoPerc = costoTotale > 0 ? round2((margineEuro / costoTotale) * 100) : 0;
+
+  const incidenzaMaterialiPerc = costoTotale > 0 ? round2((costoMaterialiTotale / costoTotale) * 100) : 0;
+  const incidenzaManodoperaPerc = costoTotale > 0 ? round2((costoManodoperaTotale / costoTotale) * 100) : 0;
+
+  return {
+    rigaId: riga.id,
+    capitoloId: riga.capitoloId,
+    codiceVoce: riga.codiceVoce,
+    descrizione: riga.descrizione,
+    unitaMisura: riga.unitaMisura,
+    quantita,
+    prezzoUnitario,
+    scontoPerc,
+    ricavoNettoUnitario,
+    ricavoTotale,
+    costoMaterialiUnitario: costi.costoMaterialiUnitario,
+    costoManodoperaUnitario: costi.costoManodoperaUnitario,
+    costoUnitarioTotale,
+    costoMaterialiTotale,
+    costoManodoperaTotale,
+    costoTotale,
+    margineEuro,
+    marginePerc,
+    ricaricoPerc,
+    incidenzaMaterialiPerc,
+    incidenzaManodoperaPerc,
+    isStimaAutomatica: costi.isStimaAutomatica
+  };
+}
+
+/**
+ * Calcola l'analisi completa di redditività e margini per l'intero documento
+ */
+export function calcolaAnalisiMarginiDocumento(doc: Documento): AnalisiMarginiDocumento {
+  const totaliDoc = calcolaTotaliDocumento(doc);
+  const righeDettaglio: DettaglioCostiRiga[] = (doc.righe || []).map(calcolaAnalisiRiga);
+
+  let totaleCostoMateriali = 0;
+  let totaleCostoManodopera = 0;
+  let vociInPerdita = 0;
+  let vociMargineBasso = 0;
+  let vociMargineBuono = 0;
+  let vociMargineOttimo = 0;
+
+  for (const r of righeDettaglio) {
+    totaleCostoMateriali += r.costoMaterialiTotale;
+    totaleCostoManodopera += r.costoManodoperaTotale;
+
+    if (r.marginePerc < 0) {
+      vociInPerdita++;
+    } else if (r.marginePerc < 15) {
+      vociMargineBasso++;
+    } else if (r.marginePerc < 30) {
+      vociMargineBuono++;
+    } else {
+      vociMargineOttimo++;
+    }
+  }
+
+  totaleCostoMateriali = round2(totaleCostoMateriali);
+  totaleCostoManodopera = round2(totaleCostoManodopera);
+  const totaleCosti = round2(totaleCostoMateriali + totaleCostoManodopera);
+
+  // Considera l'imponibile effettivo al netto dello sconto generale
+  const ricavoLavoriNetto = totaliDoc.imponibileLavoriNetto;
+  const ricavoLavoriLordo = totaliDoc.imponibileLavoriLordo;
+  const scontoGeneraleValore = totaliDoc.scontoGeneraleValore;
+
+  const margineComplessivoEuro = round2(ricavoLavoriNetto - totaleCosti);
+  const margineComplessivoPerc = ricavoLavoriNetto > 0 ? round2((margineComplessivoEuro / ricavoLavoriNetto) * 100) : 0;
+  const ricaricoComplessivoPerc = totaleCosti > 0 ? round2((margineComplessivoEuro / totaleCosti) * 100) : 0;
+
+  const incidenzaMaterialiSuCosti = totaleCosti > 0 ? round2((totaleCostoMateriali / totaleCosti) * 100) : 0;
+  const incidenzaManodoperaSuCosti = totaleCosti > 0 ? round2((totaleCostoManodopera / totaleCosti) * 100) : 0;
+
+  // Analisi per capitolo
+  const capitoliDettaglio: AnalisiCapitoloMargini[] = (doc.capitoli || []).map((cap) => {
+    const righeCap = righeDettaglio.filter((r) => r.capitoloId === cap.id);
+    const ricavoCapLordo = righeCap.reduce((sum, r) => sum + r.ricavoTotale, 0);
+
+    // Applica quota proporzionale di sconto generale al capitolo se presente
+    const scontoRatio = ricavoLavoriLordo > 0 ? ricavoLavoriNetto / ricavoLavoriLordo : 1;
+    const ricavoCapNetto = round2(ricavoCapLordo * scontoRatio);
+
+    const cMat = round2(righeCap.reduce((sum, r) => sum + r.costoMaterialiTotale, 0));
+    const cMano = round2(righeCap.reduce((sum, r) => sum + r.costoManodoperaTotale, 0));
+    const cTot = round2(cMat + cMano);
+    const margCapEuro = round2(ricavoCapNetto - cTot);
+    const margCapPerc = ricavoCapNetto > 0 ? round2((margCapEuro / ricavoCapNetto) * 100) : 0;
+    const ricCapPerc = cTot > 0 ? round2((margCapEuro / cTot) * 100) : 0;
+
+    return {
+      capitoloId: cap.id,
+      titolo: cap.titolo,
+      ordine: cap.ordine,
+      numeroVoci: righeCap.length,
+      ricavoTotale: ricavoCapNetto,
+      costoMaterialiTotale: cMat,
+      costoManodoperaTotale: cMano,
+      costoTotale: cTot,
+      margineEuro: margCapEuro,
+      marginePerc: margCapPerc,
+      ricaricoPerc: ricCapPerc
+    };
+  });
+
+  return {
+    righeDettaglio,
+    capitoliDettaglio,
+    ricavoLavoriLordo,
+    scontoGeneraleValore,
+    ricavoLavoriNetto,
+    totaleCostoMateriali,
+    totaleCostoManodopera,
+    totaleCosti,
+    margineComplessivoEuro,
+    margineComplessivoPerc,
+    ricaricoComplessivoPerc,
+    incidenzaMaterialiSuCosti,
+    incidenzaManodoperaSuCosti,
+    vociInPerdita,
+    vociMargineBasso,
+    vociMargineBuono,
+    vociMargineOttimo
+  };
 }

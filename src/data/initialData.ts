@@ -741,6 +741,119 @@ export const INITIAL_PRESET_MODELLI: ModelloDocumentoPreset[] = [
         ]
       }
     ]
+  },
+  {
+    id: 'mod-progettazione-preliminare-05',
+    titolo: 'Progettazione Preliminare',
+    categoria: 'GESTIONE DI PROGETTO',
+    descrizione:
+      'Incarico professionale e di project management per lo studio di fattibilità tecnico-economica (PFTE): rilievo dello stato dei luoghi, verifiche urbanistico-edilizie, concept distributivo, modellazione 3D e stima sommaria dei costi.',
+    tipoPredefinito: 'preventivo',
+    oneriSicurezzaTipo: 'percentuale',
+    oneriSicurezzaValore: 0,
+    cassaPrevidenzialeAttiva: true,
+    cassaPrevidenzialeNome: 'Inarcassa / Cassa Previdenziale',
+    cassaPrevidenzialeTipo: 'percentuale',
+    cassaPrevidenzialeValore: 4,
+    cassaPrevidenzialePerc: 4,
+    ivaPerc: 22,
+    condizioniPagamento:
+      '30% alla conferma dell\'incarico, 40% alla presentazione degli schemi distributivi, 30% a consegna elaborati preliminari completi.',
+    tempiEsecuzione:
+      'Consegna degli elaborati preliminari entro 25 giorni lavorativi dal completamento del rilievo e reperimento atti comunali.',
+    esclusioni:
+      'Diritti di segreteria, bolli, oneri istruttori comunali, indagini geologico-strutturali e pratiche autorizzative definitive.',
+    noteFinali:
+      'Prestazione di project management e progettazione preliminare svolta ai sensi delle vigenti linee guida professionali.',
+    capitoli: [
+      {
+        titolo: 'Capitolo 1 - Rilievi, Indagini Preliminari e Conformità Urbanistica',
+        righe: [
+          {
+            descrizione:
+              'Accesso agli atti presso l\'ufficio tecnico comunale, reperimento titoli edilizi abilitativi pregressi e verifica di conformità urbanistico-edilizia',
+            unitaMisura: 'a corpo',
+            quantita: 1,
+            prezzoUnitario: 450.0,
+            quotaManodoperaPerc: 90
+          },
+          {
+            descrizione:
+              'Rilievo plano-altimetrico, geometrico e fotografico dell\'immobile con distanziometro laser e restituzione grafica in ambiente CAD/BIM quotata',
+            unitaMisura: 'mq',
+            quantita: 120.0,
+            prezzoUnitario: 6.5,
+            quotaManodoperaPerc: 85
+          },
+          {
+            descrizione:
+              'Acquisizione visure catastali storiche, planimetria d\'impianto rasterizzata e verifica allineamento stato di fatto - catasto',
+            unitaMisura: 'a corpo',
+            quantita: 1,
+            prezzoUnitario: 180.0,
+            quotaManodoperaPerc: 80
+          }
+        ]
+      },
+      {
+        titolo: 'Capitolo 2 - Concept Design, Schemi Funzionali e Modellazione 3D',
+        righe: [
+          {
+            descrizione:
+              'Analisi preliminare dei vincoli sovraordinati (P.G.T./P.R.G., regolamento edilizio e d\'igiene, vincoli paesaggistici e ambientali)',
+            unitaMisura: 'a corpo',
+            quantita: 1,
+            prezzoUnitario: 350.0,
+            quotaManodoperaPerc: 90
+          },
+          {
+            descrizione:
+              'Elaborazione di n. 3 soluzioni distributive preliminari in pianta (layout funzionale degli spazi, ottimizzazione flussi e ingombri arredi)',
+            unitaMisura: 'a corpo',
+            quantita: 1,
+            prezzoUnitario: 850.0,
+            quotaManodoperaPerc: 95
+          },
+          {
+            descrizione:
+              'Modellazione volumetrica tridimensionale concettuale (concept 3D) con viste prospettiche d\'assieme e moodboard materico delle finiture',
+            unitaMisura: 'a corpo',
+            quantita: 1,
+            prezzoUnitario: 600.0,
+            quotaManodoperaPerc: 90
+          }
+        ]
+      },
+      {
+        titolo: 'Capitolo 3 - Quadro Economico di Massima e Cronoprogramma',
+        righe: [
+          {
+            descrizione:
+              'Stima sommaria parametrica dei costi di massima dell\'intervento e quadro economico divisionale per macro-categorie di opere',
+            unitaMisura: 'a corpo',
+            quantita: 1,
+            prezzoUnitario: 420.0,
+            quotaManodoperaPerc: 85
+          },
+          {
+            descrizione:
+              'Cronoprogramma generale di massima con indicazione dell\'iter autorizzativo, tempi di progettazione esecutiva e durata stimata del cantiere',
+            unitaMisura: 'a corpo',
+            quantita: 1,
+            prezzoUnitario: 280.0,
+            quotaManodoperaPerc: 85
+          },
+          {
+            descrizione:
+              'Relazione tecnica illustrativa preliminare di sintesi e incontro collegiale di restituzione con la Committenza',
+            unitaMisura: 'a corpo',
+            quantita: 1,
+            prezzoUnitario: 300.0,
+            quotaManodoperaPerc: 90
+          }
+        ]
+      }
+    ]
   }
 ];
 

@@ -39,6 +39,7 @@ export const DocumentPrintView: React.FC<DocumentPrintViewProps> = ({
   azienda,
   onBack
 }) => {
+  const [mostraSoloTotali, setMostraSoloTotali] = useState(false);
   const [mostraFormuleMetriche, setMostraFormuleMetriche] = useState(
     doc.tipo === 'computo_metrico'
   );
@@ -93,6 +94,16 @@ export const DocumentPrintView: React.FC<DocumentPrintViewProps> = ({
   };
 
   const getTitoloTipo = () => {
+    if (mostraSoloTotali) {
+      switch (doc.tipo) {
+        case 'computo_metrico':
+          return 'COMPUTO METRICO ESTIMATIVO (SOMMARIO TOTALI)';
+        case 'fattura_proforma':
+          return 'FATTURA PROFORMA (SOMMARIO TOTALI)';
+        default:
+          return 'PREVENTIVO DI SPESA (SOMMARIO TOTALI)';
+      }
+    }
     switch (doc.tipo) {
       case 'computo_metrico':
         return mostraPrezziUnitari
@@ -128,9 +139,34 @@ export const DocumentPrintView: React.FC<DocumentPrintViewProps> = ({
 
         {/* View toggles for printing customization */}
         <div className="flex flex-wrap items-center gap-3 text-xs">
-          <label className="flex items-center gap-1.5 text-slate-700 cursor-pointer select-none">
+          {/* Spunta Mostra solo Totali */}
+          <label
+            htmlFor="chk-mostra-solo-totali"
+            className={`flex items-center gap-1.5 cursor-pointer select-none px-2.5 py-1 rounded-lg border transition-all ${
+              mostraSoloTotali
+                ? 'bg-amber-100 border-amber-300 text-amber-900 font-bold shadow-2xs'
+                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold'
+            }`}
+            title="Mostra solo il riepilogo con i totali dei capitoli e il totale generale del documento, nascondendo le singole voci analitiche"
+          >
+            <input
+              id="chk-mostra-solo-totali"
+              type="checkbox"
+              checked={mostraSoloTotali}
+              onChange={(e) => setMostraSoloTotali(e.target.checked)}
+              className="rounded-sm border-slate-300 text-amber-600 focus:ring-amber-500"
+            />
+            <span>Mostra solo Totali</span>
+          </label>
+
+          <label
+            className={`flex items-center gap-1.5 text-slate-700 cursor-pointer select-none ${
+              mostraSoloTotali ? 'opacity-40 cursor-not-allowed' : ''
+            }`}
+          >
             <input
               type="checkbox"
+              disabled={mostraSoloTotali}
               checked={mostraFormuleMetriche}
               onChange={(e) => setMostraFormuleMetriche(e.target.checked)}
               className="rounded-sm border-slate-300 text-amber-600"
@@ -138,9 +174,14 @@ export const DocumentPrintView: React.FC<DocumentPrintViewProps> = ({
             <span>Misure Metriche (L × P × H)</span>
           </label>
 
-          <label className="flex items-center gap-1.5 text-slate-700 cursor-pointer select-none">
+          <label
+            className={`flex items-center gap-1.5 text-slate-700 cursor-pointer select-none ${
+              mostraSoloTotali ? 'opacity-40 cursor-not-allowed' : ''
+            }`}
+          >
             <input
               type="checkbox"
+              disabled={mostraSoloTotali}
               checked={mostraPrezziUnitari}
               onChange={(e) => setMostraPrezziUnitari(e.target.checked)}
               className="rounded-sm border-slate-300 text-amber-600"
@@ -343,26 +384,36 @@ export const DocumentPrintView: React.FC<DocumentPrintViewProps> = ({
                 {/* Capitolo Title Bar */}
                 <div className="bg-slate-900 text-white px-3 py-1.5 rounded-md flex justify-between items-center text-xs font-bold uppercase tracking-wider">
                   <span>{cap.titolo}</span>
-                  {mostraPrezziUnitari && (
-                    <span className="font-mono">{formatEuro(capSubtotale)}</span>
+                  {(mostraPrezziUnitari || mostraSoloTotali) && (
+                    <span className="font-mono font-bold">{formatEuro(capSubtotale)}</span>
                   )}
                 </div>
 
-                {/* Voci Table */}
+                {cap.descrizione && (
+                  <p className="text-[11px] text-slate-500 italic px-1">
+                    {cap.descrizione}
+                  </p>
+                )}
+
+                {/* Voci Table: in modalità "Mostra solo Totali" mostra Codice e Descrizione con il totale di capitolo */}
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-slate-300 text-[10px] uppercase font-bold text-slate-500 bg-slate-50/50">
                       <th className="py-1.5 px-2 w-16">Codice</th>
                       <th className="py-1.5 px-2">Descrizione delle Opere e Forniture</th>
-                      {mostraFormuleMetriche && (
-                        <th className="py-1.5 px-2 text-center w-28">Misure (L×P×H)</th>
-                      )}
-                      <th className="py-1.5 px-2 text-center w-12">U.M.</th>
-                      <th className="py-1.5 px-2 text-right w-16">Quantità</th>
-                      {mostraPrezziUnitari && (
+                      {!mostraSoloTotali && (
                         <>
-                          <th className="py-1.5 px-2 text-right w-20">Prezzo Unit.</th>
-                          <th className="py-1.5 px-2 text-right w-24">Importo Tot.</th>
+                          {mostraFormuleMetriche && (
+                            <th className="py-1.5 px-2 text-center w-28">Misure (L×P×H)</th>
+                          )}
+                          <th className="py-1.5 px-2 text-center w-12">U.M.</th>
+                          <th className="py-1.5 px-2 text-right w-16">Quantità</th>
+                          {mostraPrezziUnitari && (
+                            <>
+                              <th className="py-1.5 px-2 text-right w-20">Prezzo Unit.</th>
+                              <th className="py-1.5 px-2 text-right w-24">Importo Tot.</th>
+                            </>
+                          )}
                         </>
                       )}
                     </tr>
@@ -371,46 +422,50 @@ export const DocumentPrintView: React.FC<DocumentPrintViewProps> = ({
                     {capRighe.map((r, rIdx) => (
                       <tr key={r.id} className="hover:bg-slate-50/40">
                         <td className="py-2 px-2 font-mono text-[11px] font-bold text-slate-700 align-top">
-                          {r.codiceVoce || `0${cIdx + 1}.${rIdx + 1}`}
+                          {r.codiceVoce || `${String(cIdx + 1).padStart(2, '0')}.${rIdx + 1}`}
                         </td>
                         <td className="py-2 px-2 text-slate-900 leading-snug align-top">
                           <div className="font-medium">{r.descrizione}</div>
-                          {mostraManodopera && r.quotaManodoperaPerc ? (
+                          {!mostraSoloTotali && mostraManodopera && r.quotaManodoperaPerc ? (
                             <span className="text-[10px] text-slate-400 block mt-0.5">
                               Quota incidenza manodopera: {r.quotaManodoperaPerc}%
                             </span>
                           ) : null}
                         </td>
-                        {mostraFormuleMetriche && (
-                          <td className="py-2 px-2 text-center font-mono text-[11px] text-slate-600 align-top whitespace-nowrap">
-                            {r.usaFormulaMetrica ? (
-                              <span>
-                                {r.partiUguali && r.partiUguali > 1 ? `${r.partiUguali}×` : ''}
-                                {formatNumero(r.lunghezza || 1)}×{formatNumero(r.larghezza || 1)}
-                                {r.altezza && r.altezza !== 1 ? `×${formatNumero(r.altezza)}` : ''}
-                              </span>
-                            ) : (
-                              <span className="text-slate-300">-</span>
-                            )}
-                          </td>
-                        )}
-                        <td className="py-2 px-2 text-center font-semibold text-slate-600 align-top">
-                          {r.unitaMisura}
-                        </td>
-                        <td className="py-2 px-2 text-right font-mono font-bold text-slate-900 align-top">
-                          {formatNumero(r.quantita)}
-                        </td>
-                        {mostraPrezziUnitari && (
+                        {!mostraSoloTotali && (
                           <>
-                            <td className="py-2 px-2 text-right font-mono text-slate-700 align-top">
-                              {formatEuro(r.prezzoUnitario)}
-                              {r.scontoPerc ? (
-                                <span className="text-[10px] text-rose-600 block">-{r.scontoPerc}%</span>
-                              ) : null}
+                            {mostraFormuleMetriche && (
+                              <td className="py-2 px-2 text-center font-mono text-[11px] text-slate-600 align-top whitespace-nowrap">
+                                {r.usaFormulaMetrica ? (
+                                  <span>
+                                    {r.partiUguali && r.partiUguali > 1 ? `${r.partiUguali}×` : ''}
+                                    {formatNumero(r.lunghezza || 1)}×{formatNumero(r.larghezza || 1)}
+                                    {r.altezza && r.altezza !== 1 ? `×${formatNumero(r.altezza)}` : ''}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-300">-</span>
+                                )}
+                              </td>
+                            )}
+                            <td className="py-2 px-2 text-center font-semibold text-slate-600 align-top">
+                              {r.unitaMisura}
                             </td>
                             <td className="py-2 px-2 text-right font-mono font-bold text-slate-900 align-top">
-                              {formatEuro(r.subtotale)}
+                              {formatNumero(r.quantita)}
                             </td>
+                            {mostraPrezziUnitari && (
+                              <>
+                                <td className="py-2 px-2 text-right font-mono text-slate-700 align-top">
+                                  {formatEuro(r.prezzoUnitario)}
+                                  {r.scontoPerc ? (
+                                    <span className="text-[10px] text-rose-600 block">-{r.scontoPerc}%</span>
+                                  ) : null}
+                                </td>
+                                <td className="py-2 px-2 text-right font-mono font-bold text-slate-900 align-top">
+                                  {formatEuro(r.subtotale)}
+                                </td>
+                              </>
+                            )}
                           </>
                         )}
                       </tr>
@@ -422,12 +477,37 @@ export const DocumentPrintView: React.FC<DocumentPrintViewProps> = ({
           })}
         </div>
 
-        {/* 4. Quadro Economico e Tabella Fiscale (Solo se mostra prezzi) */}
-        {mostraPrezziUnitari && (
+        {/* 4. Quadro Economico e Tabella Fiscale (Solo se mostra prezzi o se mostra solo totali) */}
+        {(mostraPrezziUnitari || mostraSoloTotali) && (
           <div className="pt-4 border-t-2 border-slate-900 break-inside-avoid space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-start gap-6">
               {/* Note e Dettagli Finanziari */}
               <div className="flex-1 space-y-2 text-xs text-slate-600">
+                {mostraSoloTotali && (doc.capitoli || []).length > 1 && (
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1.5">
+                    <span className="font-bold text-slate-800 block text-[11px] uppercase tracking-wider">
+                      Riepilogo Totali per Capitolo
+                    </span>
+                    <div className="space-y-1 divide-y divide-slate-200/60">
+                      {(doc.capitoli || []).map((cap) => {
+                        const capRighe = (doc.righe || []).filter((r) => r.capitoloId === cap.id);
+                        if (capRighe.length === 0) return null;
+                        const capSub = capRighe.reduce((acc, r) => acc + (Number(r.subtotale) || 0), 0);
+                        return (
+                          <div key={cap.id} className="pt-1 flex justify-between items-center text-[11px]">
+                            <span className="text-slate-700 font-medium truncate pr-2">
+                              {cap.titolo}
+                            </span>
+                            <span className="font-mono font-bold text-slate-900 shrink-0">
+                              {formatEuro(capSub)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1">
                   <span className="font-bold text-slate-800 block text-[11px] uppercase tracking-wider">
                     Sintesi di Legge & Detrazioni

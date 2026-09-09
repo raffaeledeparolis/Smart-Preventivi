@@ -7,7 +7,8 @@ import {
   Documento,
   DatiAzienda,
   StatoDocumento,
-  TipoDocumento
+  TipoDocumento,
+  ModelloDocumentoPreset
 } from './types';
 import {
   loadInitialData,
@@ -17,6 +18,8 @@ import {
   saveVociPrezziario,
   saveDocumenti,
   saveDatiAzienda,
+  loadCustomModelli,
+  saveCustomModelli,
   exportBackupJson,
   importBackupJson,
   resetToDefaultData
@@ -47,6 +50,7 @@ export default function App() {
   const [materiali, setMateriali] = useState<Materiale[]>([]);
   const [vociPrezziario, setVociPrezziario] = useState<VocePrezziario[]>([]);
   const [documenti, setDocumenti] = useState<Documento[]>([]);
+  const [customModelli, setCustomModelli] = useState<ModelloDocumentoPreset[]>([]);
   const [azienda, setAzienda] = useState<DatiAzienda>({
     ragioneSociale: 'EDILTECNICA RESTAURI & COSTRUZIONI S.R.L.',
     sottotitolo: 'Opere Edili, Ristrutturazioni Civili e Impiantistica',
@@ -75,6 +79,7 @@ export default function App() {
     setVociPrezziario(data.vociPrezziario);
     setDocumenti(data.documenti);
     setAzienda(data.azienda);
+    setCustomModelli(data.customModelli || loadCustomModelli());
   }, []);
 
   // --- CLIENT HANDLERS ---
@@ -356,6 +361,24 @@ export default function App() {
     setEditingDocumento(doc);
   };
 
+  // --- TEMPLATE / MODELLI PRECONFEZIONATI HANDLERS ---
+  const handleSaveTemplate = (preset: ModelloDocumentoPreset) => {
+    setCustomModelli((prev) => {
+      const exists = prev.some((p) => p.id === preset.id);
+      const next = exists ? prev.map((p) => (p.id === preset.id ? preset : p)) : [preset, ...prev];
+      saveCustomModelli(next);
+      return next;
+    });
+  };
+
+  const handleDeleteCustomModello = (id: string) => {
+    setCustomModelli((prev) => {
+      const next = prev.filter((p) => p.id !== id);
+      saveCustomModelli(next);
+      return next;
+    });
+  };
+
   // --- AZIENDA SETTINGS HANDLER ---
   const handleSaveAzienda = (nuovaAzienda: DatiAzienda) => {
     setAzienda(nuovaAzienda);
@@ -370,7 +393,8 @@ export default function App() {
       materiali,
       vociPrezziario,
       documenti,
-      azienda
+      azienda,
+      customModelli
     });
   };
 
@@ -384,6 +408,9 @@ export default function App() {
         setVociPrezziario(data.vociPrezziario);
         setDocumenti(data.documenti);
         setAzienda(data.azienda);
+        if (data.customModelli) {
+          setCustomModelli(data.customModelli);
+        }
         alert('Backup importato con successo!');
       }
     } catch (err) {
@@ -400,6 +427,7 @@ export default function App() {
     setVociPrezziario(data.vociPrezziario);
     setDocumenti(data.documenti);
     setAzienda(data.azienda);
+    setCustomModelli(data.customModelli || []);
     setEditingDocumento(null);
     setPrintingDocumento(null);
     setActiveTab('documenti');
@@ -444,6 +472,12 @@ export default function App() {
             onSave={handleSaveDocumento}
             onOpenPrint={(doc) => setPrintingDocumento(doc)}
             onClose={() => setEditingDocumento(null)}
+            onSaveTemplate={handleSaveTemplate}
+            onNavigateToGeneratore={() => {
+              setEditingDocumento(null);
+              setActiveTab('generatore');
+            }}
+            existingCategories={[...new Set(customModelli.map((m) => m.categoria))]}
           />
         ) : (
           /* TAB VIEWS */
@@ -458,6 +492,8 @@ export default function App() {
                 onDuplicateDocumento={handleDuplicateDocumento}
                 onDeleteDocumento={handleDeleteDocumento}
                 onUpdateStato={handleUpdateStato}
+                onSaveTemplate={handleSaveTemplate}
+                existingCategories={[...new Set(customModelli.map((m) => m.categoria))]}
               />
             )}
 
@@ -466,6 +502,8 @@ export default function App() {
                 clienti={clienti}
                 existingDocsCount={documenti.length}
                 onDocumentGenerated={handleDocumentGenerated}
+                customModelli={customModelli}
+                onDeleteCustomModello={handleDeleteCustomModello}
               />
             )}
 

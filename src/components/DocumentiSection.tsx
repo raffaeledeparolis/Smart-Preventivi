@@ -15,10 +15,12 @@ import {
   Building2,
   Calendar,
   Layers,
-  Sparkles
+  Sparkles,
+  BookmarkPlus
 } from 'lucide-react';
-import { Documento, TipoDocumento, StatoDocumento } from '../types';
+import { Documento, TipoDocumento, StatoDocumento, ModelloDocumentoPreset } from '../types';
 import { calcolaTotaliDocumento, formatEuro, formatDataItaliana } from '../utils/calculations';
+import { SaveTemplateModal } from './SaveTemplateModal';
 
 interface DocumentiSectionProps {
   documenti?: Documento[];
@@ -29,6 +31,8 @@ interface DocumentiSectionProps {
   onDuplicateDocumento: (doc: Documento) => void;
   onDeleteDocumento: (id: string) => void;
   onUpdateStato: (id: string, stato: StatoDocumento) => void;
+  onSaveTemplate?: (preset: ModelloDocumentoPreset) => void;
+  existingCategories?: string[];
 }
 
 export const DocumentiSection: React.FC<DocumentiSectionProps> = ({
@@ -39,11 +43,14 @@ export const DocumentiSection: React.FC<DocumentiSectionProps> = ({
   onOpenGeneratore,
   onDuplicateDocumento,
   onDeleteDocumento,
-  onUpdateStato
+  onUpdateStato,
+  onSaveTemplate,
+  existingCategories = []
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTipo, setFilterTipo] = useState<string>('tutti');
   const [filterStato, setFilterStato] = useState<string>('tutti');
+  const [templateDocToSave, setTemplateDocToSave] = useState<Documento | null>(null);
 
   const safeDocumenti = documenti || [];
 
@@ -329,6 +336,19 @@ export const DocumentiSection: React.FC<DocumentiSectionProps> = ({
 
                   {/* Actions buttons */}
                   <div className="flex items-center gap-1.5">
+                    {/* Salva come Modello */}
+                    {onSaveTemplate && (
+                      <button
+                        id={`btn-salva-template-doc-${doc.id}`}
+                        onClick={() => setTemplateDocToSave(doc)}
+                        className="inline-flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-semibold px-2.5 py-2 rounded-lg transition-colors border border-amber-300"
+                        title="Salva come modello preconfezionato"
+                      >
+                        <BookmarkPlus className="w-3.5 h-3.5 text-amber-600" />
+                        <span className="hidden xl:inline">Salva come Modello</span>
+                      </button>
+                    )}
+
                     {/* Stampa / PDF */}
                     <button
                       id={`btn-stampa-doc-${doc.id}`}
@@ -378,6 +398,19 @@ export const DocumentiSection: React.FC<DocumentiSectionProps> = ({
             );
           })}
         </div>
+      )}
+      {/* Modal Salva come Template / Modello Preconfezionato */}
+      {templateDocToSave && onSaveTemplate && (
+        <SaveTemplateModal
+          documento={templateDocToSave}
+          isOpen={Boolean(templateDocToSave)}
+          onClose={() => setTemplateDocToSave(null)}
+          onSaveTemplate={(preset) => {
+            onSaveTemplate(preset);
+          }}
+          onNavigateToGeneratore={onOpenGeneratore}
+          existingCategories={existingCategories}
+        />
       )}
     </div>
   );
